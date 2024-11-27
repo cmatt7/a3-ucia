@@ -2,8 +2,15 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import classification_report
+import numpy as np
+# NB
 from sklearn.naive_bayes import GaussianNB
-from sklearn.metrics import classification_report
+# Rede Neural
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+import matplotlib.pyplot as plt
 
 data = pd.read_csv('C:/Users/mathe/.cache/kagglehub/datasets/bhadramohit/social-media-usage-datasetapplications/versions/1/social_media_usage.csv')
 
@@ -54,3 +61,48 @@ y_pred_nb = nb_classifier.predict(X_test)
 
 nb_performance = classification_report(y_test, y_pred_nb, zero_division=0)
 print('Naive Baynes Performance\n', nb_performance)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+label_encoder = LabelEncoder()
+y_train_encoded = label_encoder.fit_transform(y_train)
+y_test_encoded = label_encoder.transform(y_test)
+
+y_train_categorical = to_categorical(y_train_encoded)
+y_test_categorical = to_categorical(y_test_encoded)
+
+model = Sequential([
+    Dense(64, input_shape=(X_train_scaled.shape[1],), activation='relu'),
+    Dense(64, activation='relu'),
+    Dense(3, activation='softmax')
+])
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+history = model.fit(X_train_scaled, y_train_categorical, epochs=50, batch_size=10, validation_data=(X_test_scaled, y_test_categorical))
+
+loss, accuracy = model.evaluate(X_test_scaled, y_test_categorical)
+print(f'Accuracy: {accuracy*100:.2f}%')
+
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Model Accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Test'], loc='upper left')
+plt.show()
+
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Model Loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Test'], loc='upper left')
+plt.show()
+
+predictions = model.predict(X_test_scaled)
+predicted_classes = np.argmax(predictions, axis=1)
+
+print(classification_report(y_test_encoded, predicted_classes, target_names=label_encoder.classes_))
